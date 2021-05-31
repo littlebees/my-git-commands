@@ -1,0 +1,92 @@
+#!/bin/bash
+
+set -e
+
+USAGE="<new branch> [--from,-f <source branch>] -c,--clear -d,--del"
+LONG_USAGE=\
+"	-c,--clear	clear all staged & untracked files after creating a new branch
+	-d,--del	delete the commit 
+
+git-try does two things.
+1. saves all current modifications into a commit on <source branch> with a tag named before-<new branch>-at-<source branch>
+2. creates a branch with a empty init commit & restore (or clear) current git status
+"
+
+source "$(git --exec-path)/git-sh-setup"
+
+while [[ ! -z "$@" ]]
+do
+    case $1 in
+        -h|--help)
+            usage
+            ;;
+        -d|--del)
+            RM_SAVE="yes"
+            ;;
+        -c|--clear)
+            CLEAR_ALL="yes"
+            ;;
+        -f|--from)
+            shift
+            if [ -z "$1" ]
+            then
+                die "<source branch> should be given a branch name"
+            else
+                SRC_BR=$1
+            fi
+            ;;
+        *)
+            if [ -z "$NEW_BR" ]
+            then
+                NEW_BR=$1
+            else
+                die "<new branch> should be given once"
+            fi
+            ;;
+    esac
+    shift
+done
+
+
+
+if [ -z "$NEW_BR" ]
+then
+    die "<new branch> should be given a branch name"
+else
+    if [ -z "$SRC_BR" ]
+    then
+        SRC_BR=$(git symbolic-ref --short HEAD)
+    fi
+    tmp_save_tag=before-$NEW_BR-at-$SRC_BR
+
+    if [ "$RM_SAVE" = "yes" ]
+    then
+        git tag -d $tmp_save_tag -q
+        say "remove $tmp_save_tag"
+    else
+        output=$(git status --porcelain)
+        if [ -z "$output" ]
+        then
+            # Working directory clean
+            git checkout -b $NEW_BR $SRC_BR
+            git commit --allow-empty -q -m "try develeping $NEW_BR"
+            say "create a branch $NEW_BR"
+        else 
+            # Uncommitted changes
+            git checkout -q $SRC_BR
+            git stash --all -q
+            git stash apply -q && git add . && git commit -m "save current work before start $NEW_BR"
+            git tag $tmp_save_tag
+            git reset -q --hard HEAD~
+            git checkout -q -b $NEW_BR $SRC_BR
+            git commit --allow-empty -q -m "try develeping $NEW_BR"
+            if [ "$CLEAR_ALL" = "yes" ]
+            then
+                git stash drop -q
+            else
+                git stash pop -q
+            fi
+            say "create a branch $NEW_BR and a save $tmp_save_tag"
+        fi
+    fi
+fi

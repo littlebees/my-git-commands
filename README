@@ -1,0 +1,10 @@
+to store some git command I often use
+
+try: create a branch with a root commit
+cout: checkout
+ct: commit
+st: status
+br: branch
+lg: beautifiul log
+reflg: beautiful reflog
+unstage: unstage a file
