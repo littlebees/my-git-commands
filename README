@@ -1,6 +1,6 @@
 to store some git command I often use
 
-try: create a branch with a root commit
+try: create a branch with a root commit & store current workplace into a commit
 cout: checkout
 ct: commit
 st: status
